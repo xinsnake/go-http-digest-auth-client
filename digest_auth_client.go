@@ -1,63 +1,61 @@
 package digest_auth_client
 
 import (
-	"crypto/md5"
-	"crypto/sha256"
+	"bytes"
 	"fmt"
-	"hash"
-	"io"
+	"net/http"
 	"strings"
+	"time"
 )
 
-type AuthorizationHeader struct {
-	Algorithm string // unquoted
-	Body      string // request value
-	Cnonce    string // quoted
-	Method    string // request value
-	Nc        string // unquoted
-	Opaque    string // quoted
-	Qop       string // unquoted
-	Realm     string // quoted
-	Resposne  string // quoted
-	Uri       string // quoted
-	Userhash  string // quoted
-	Username  string // quoted
-	Username_ string // quoted
+type DigestRequest struct {
+	Body     string
+	Method   string
+	Password string
+	Uri      string
+	Username string
 }
 
-func (ah *AuthorizationHeader) ComputeResponse() AuthorizationHeader {
-	return *ah
+func (dr *DigestRequest) NewRequest(
+	username string, password string, method string, uri string, body string) DigestRequest {
+
+	dr.Body = body
+	dr.Method = method
+	dr.Password = password
+	dr.Uri = uri
+	dr.Body = body
+
+	return *dr
 }
 
-func (ah *AuthorizationHeader) ComputeA1() AuthorizationHeader {
-	return *ah
-}
+func (dr *DigestRequest) Execute() (*http.Response, error) {
 
-func (ah *AuthorizationHeader) ComputeA2() (s string) {
-
-	if strings.Compare(ah.Qop, "auth") == 0 || strings.Compare(ah.Qop, "") == 0 {
-		s = fmt.Sprintf("%s:%s", ah.Method, ah.Uri)
+	req, err := http.NewRequest(dr.Method, dr.Uri, bytes.NewReader([]byte(dr.Body)))
+	if err != nil {
+		return nil, err
 	}
 
-	if strings.Compare(ah.Qop, "auth-int") == 0 {
-		s = fmt.Sprintf("%s:%s", s, ah.Hash(ah.Body))
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	resp, err := client.Do(req)
+
+	if resp.StatusCode == 401 {
+		return dr.executeDigest(resp)
 	}
 
-	return
+	return resp, err
 }
 
-func (ah *AuthorizationHeader) Hash(a string) (s string) {
+func (dr *DigestRequest) executeDigest(resp *http.Response) (*http.Response, error) {
 
-	var h hash.Hash
+	wwwAuthenticateHeaderString := resp.Header.Get("WWW-Authenticate")
 
-	if strings.Compare(ah.Algorithm, "MD5") == 0 {
-		h = md5.New()
-	} else if strings.Compare(ah.Algorithm, "SHA-256") == 0 {
-		h = sha256.New()
+	if strings.Compare(wwwAuthenticateHeaderString, "") == 0 {
+		return nil, fmt.Errorf("Failed to get WWW-Authenticate header, please check your server configuration.")
 	}
 
-	io.WriteString(h, a)
-	s = string(h.Sum(nil))
+	wwwAuthenticateHeader, err = newWwwAuthenticateHeader(wwwAuthenticateHeaderString)
 
-	return
+	return nil, nil
 }
