@@ -121,7 +121,7 @@ func (ah *authorization) toString() string {
 	}
 
 	if ah.Nc != 0 {
-		buffer.WriteString(fmt.Sprintf("cnonce=%d, ", ah.Nc))
+		buffer.WriteString(fmt.Sprintf("nc=%08d, ", ah.Nc))
 	}
 
 	if ah.Opaque != "" {
