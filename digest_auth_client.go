@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -28,34 +27,55 @@ func (dr *DigestRequest) NewRequest(
 	return *dr
 }
 
-func (dr *DigestRequest) Execute() (*http.Response, error) {
-
-	req, err := http.NewRequest(dr.Method, dr.Uri, bytes.NewReader([]byte(dr.Body)))
-	if err != nil {
+func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
+	var req *http.Request
+	if req, err = http.NewRequest(dr.Method, dr.Uri, bytes.NewReader([]byte(dr.Body))); err != nil {
 		return nil, err
 	}
 
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
-	resp, err := client.Do(req)
+	resp, err = client.Do(req)
 
 	if resp.StatusCode == 401 {
 		return dr.executeDigest(resp)
 	}
 
-	return resp, err
+	return
 }
 
 func (dr *DigestRequest) executeDigest(resp *http.Response) (*http.Response, error) {
+	var (
+		err  error
+		wa   *wwwAuthenticate
+		auth *authorization
+		req  *http.Request
+	)
 
-	wwwAuthenticateHeaderString := resp.Header.Get("WWW-Authenticate")
-
-	if strings.Compare(wwwAuthenticateHeaderString, "") == 0 {
+	waString := resp.Header.Get("WWW-Authenticate")
+	if waString == "" {
 		return nil, fmt.Errorf("Failed to get WWW-Authenticate header, please check your server configuration.")
 	}
 
-	wwwAuthenticateHeader, err = newWwwAuthenticateHeader(wwwAuthenticateHeaderString)
+	if wa, err = newWAHeader(waString); err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	if auth, err = newAuthorization(wa, dr); err != nil {
+		return nil, err
+	}
+
+	authString := fmt.Sprintf("Digest %s", auth.toString())
+	if req, err = http.NewRequest(dr.Method, dr.Uri, bytes.NewReader([]byte(dr.Body))); err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Authorization", authString)
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	return client.Do(req)
 }

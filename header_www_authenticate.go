@@ -8,10 +8,14 @@ type wwwAuthenticate struct {
 	Qop       string // quoted
 	Realm     string // quoted
 	Stale     bool   // unquoted
-	charset   string // quoted
-	userhash  bool   // quoted
+	Charset   string // quoted
+	Userhash  bool   // quoted
 }
 
-func newWwwAuthenticateHeader(newWwwAuthenticateHeaderString string) (*wwwAuthenticate, error) {
+func newWAHeader(newWAHeaderString string) (*wwwAuthenticate, error) {
+	return nil, nil
+}
 
+func (wa *wwwAuthenticate) fromString(s string) (*wwwAuthenticate, error) {
+	return wa, nil
 }

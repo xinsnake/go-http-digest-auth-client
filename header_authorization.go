@@ -6,67 +6,97 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"strings"
+	"regexp"
+	"time"
 )
 
-type authorizationHeader struct {
+type authorization struct {
 	Algorithm string // unquoted
 	Cnonce    string // quoted
-	Nc        string // unquoted
-	Nounce    string // quoted
+	Nc        int    // unquoted
+	Nonce     string // quoted
 	Opaque    string // quoted
 	Qop       string // unquoted
 	Realm     string // quoted
-	Resposne  string // quoted
+	Response  string // quoted
 	Uri       string // quoted
-	Userhash  string // quoted
+	Userhash  bool   // quoted
 	Username  string // quoted
 	Username_ string // quoted
 }
 
-func (ah *authorizationHeader) ComputeResponse() authorizationHeader {
-	return *ah
+func newAuthorization(wa *wwwAuthenticate, dr *DigestRequest) (*authorization, error) {
+
+	auth := authorization{
+		Algorithm: wa.Algorithm,
+		Cnonce:    "",
+		Nc:        1, // TODO
+		Nonce:     wa.Nonce,
+		Opaque:    wa.Opaque,
+		Qop:       "",
+		Realm:     wa.Realm,
+		Response:  "",
+		Uri:       dr.Uri,
+		Userhash:  wa.Userhash,
+		Username:  dr.Username,
+		Username_: "", // TODO
+	}
+
+	auth.Cnonce = auth.hash(fmt.Sprintf("%d:%s:dfjosbn3kjd01", time.Now().UnixNano(), dr.Username))
+
+	if auth.Userhash {
+		auth.Username = auth.hash(fmt.Sprintf("%s:%s", auth.Username, auth.Realm))
+	}
+
+	auth.Response = auth.computeResponse(wa, dr)
+
+	return &auth, nil
 }
 
-func (ah *authorizationHeader) ComputeA1(password string) (s string) {
+func (ah *authorization) computeResponse(wa *wwwAuthenticate, dr *DigestRequest) (s string) {
 
-	if strings.Compare(ah.Algorithm, "") == 0 ||
-		strings.Compare(ah.Algorithm, "MD5") == 0 ||
-		strings.Compare(ah.Algorithm, "SHA-256") == 0 {
-		s = fmt.Sprintf("%s:%s:%s", ah.Username, ah.Realm, password)
-	}
+	kdSecret := ah.hash(ah.computeA1(wa, dr))
+	kdData := fmt.Sprintf("%s:%s:%s:%s:%s", ah.Nonce, ah.Nc, ah.Cnonce, ah.Qop, ah.hash(ah.computeA2(wa, dr)))
 
-	if strings.Compare(ah.Algorithm, "MD5-sess") ||
-		strings.Compare(ah.Algorithm, "SHA-256-sess") {
-		upHash := ah.Hash(fmt.Sprintf("%s:%s:%s", ah.Username, ah.Realm, password))
-		s = fmt.Sprintf("%s:%s:%s", upHash, ah.Nc)
-	}
-
-	return
+	return ah.hash(fmt.Sprintf("%s:%s", kdSecret, kdData))
 }
 
-func (ah *authorizationHeader) ComputeA2() (s string) {
+func (ah *authorization) computeA1(wa *wwwAuthenticate, dr *DigestRequest) string {
 
-	if strings.Compare(ah.Qop, "auth") == 0 || strings.Compare(ah.Qop, "") == 0 {
-		s = fmt.Sprintf("%s:%s", ah.Method, ah.Uri)
+	if ah.Algorithm == "" || ah.Algorithm == "MD5" || ah.Algorithm == "SHA-256" {
+		return fmt.Sprintf("%s:%s:%s", ah.Username, ah.Realm, dr.Password)
 	}
 
-	if strings.Compare(ah.Qop, "auth-int") == 0 {
-		s = fmt.Sprintf("%s:%s", s, ah.Hash(ah.Body))
+	if ah.Algorithm == "MD5-sess" || ah.Algorithm == "SHA-256-sess" {
+		upHash := ah.hash(fmt.Sprintf("%s:%s:%s", ah.Username, ah.Realm, dr.Password))
+		return fmt.Sprintf("%s:%s:%s", upHash, ah.Nc)
 	}
 
-	return
+	return ""
 }
 
-func (ah *authorizationHeader) Hash(a string) (s string) {
+func (ah *authorization) computeA2(wa *wwwAuthenticate, dr *DigestRequest) string {
+
+	if matched, _ := regexp.MatchString("auth-int", wa.Qop); matched {
+		ah.Qop = "auth-int"
+		return fmt.Sprintf("%s:%s:%s", dr.Method, ah.Uri, ah.hash(dr.Body))
+	}
+
+	if ah.Qop == "auth" || ah.Qop == "" {
+		ah.Qop = "auth"
+		return fmt.Sprintf("%s:%s", dr.Method, ah.Uri)
+	}
+
+	return ""
+}
+
+func (ah *authorization) hash(a string) (s string) {
 
 	var h hash.Hash
 
-	if strings.Compare(ah.Algorithm, "MD5") == 0 ||
-		strings.Compare(ah.Algorithm, "MD5-sess") == 0 {
+	if ah.Algorithm == "MD5" || ah.Algorithm == "MD5-sess" {
 		h = md5.New()
-	} else if strings.Compare(ah.Algorithm, "SHA-256") == 0 ||
-		strings.Compare(ah.Algorithm, "SHA-256-sess") == 0 {
+	} else if ah.Algorithm == "SHA-256" || ah.Algorithm == "SHA-256-sess" {
 		h = sha256.New()
 	}
 
@@ -74,4 +104,8 @@ func (ah *authorizationHeader) Hash(a string) (s string) {
 	s = string(h.Sum(nil))
 
 	return
+}
+
+func (ah *authorization) toString() string {
+	return ""
 }
