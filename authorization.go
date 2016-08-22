@@ -1,6 +1,7 @@
 package digest_auth_client
 
 import (
+	"bytes"
 	"crypto/md5"
 	"crypto/sha256"
 	"fmt"
@@ -107,5 +108,53 @@ func (ah *authorization) hash(a string) (s string) {
 }
 
 func (ah *authorization) toString() string {
-	return ""
+	var buffer bytes.Buffer
+
+	buffer.WriteString("Digest ")
+
+	if ah.Algorithm != "" {
+		buffer.WriteString(fmt.Sprintf("algorithm=%s, ", ah.Algorithm))
+	}
+
+	if ah.Cnonce != "" {
+		buffer.WriteString(fmt.Sprintf("cnonce=\"%s\", ", ah.Cnonce))
+	}
+
+	if ah.Nc != 0 {
+		buffer.WriteString(fmt.Sprintf("cnonce=%d, ", ah.Nc))
+	}
+
+	if ah.Opaque != "" {
+		buffer.WriteString(fmt.Sprintf("opaque=\"%s\", ", ah.Opaque))
+	}
+
+	if ah.Qop != "" {
+		buffer.WriteString(fmt.Sprintf("qop=%s, ", ah.Qop))
+	}
+
+	if ah.Realm != "" {
+		buffer.WriteString(fmt.Sprintf("realm=\"%s\", ", ah.Realm))
+	}
+
+	if ah.Response != "" {
+		buffer.WriteString(fmt.Sprintf("response=\"%s\", ", ah.Response))
+	}
+
+	if ah.Response != "" {
+		buffer.WriteString(fmt.Sprintf("response=\"%s\", ", ah.Response))
+	}
+
+	if ah.Uri != "" {
+		buffer.WriteString(fmt.Sprintf("uri=\"%s\", ", ah.Uri))
+	}
+
+	if ah.Userhash {
+		buffer.WriteString("userhash=true, ")
+	}
+
+	if ah.Username != "" {
+		buffer.WriteString(fmt.Sprintf("username=\"%s\", ", ah.Username))
+	}
+
+	return buffer.String()
 }

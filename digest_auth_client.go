@@ -58,7 +58,7 @@ func (dr *DigestRequest) executeDigest(resp *http.Response) (*http.Response, err
 		return nil, fmt.Errorf("Failed to get WWW-Authenticate header, please check your server configuration.")
 	}
 
-	if wa, err = newWAHeader(waString); err != nil {
+	if wa, err = newWwwAuthenticate(waString); err != nil {
 		return nil, err
 	}
 
