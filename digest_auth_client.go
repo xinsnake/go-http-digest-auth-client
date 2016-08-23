@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+var (
+	auth *authorization
+	wa   *wwwAuthenticate
+)
+
 type DigestRequest struct {
 	Body     string
 	Method   string
@@ -15,62 +20,76 @@ type DigestRequest struct {
 	Username string
 }
 
-func (dr *DigestRequest) NewRequest(
-	username string, password string, method string, uri string, body string) DigestRequest {
+func NewRequest(username string, password string, method string, uri string, body string) DigestRequest {
+
+	dr := DigestRequest{}
 
 	dr.Body = body
 	dr.Method = method
 	dr.Password = password
 	dr.Uri = uri
-	dr.Body = body
+	dr.Username = username
 
-	return *dr
+	return dr
 }
 
 func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
-	var req *http.Request
-	if req, err = http.NewRequest(dr.Method, dr.Uri, bytes.NewReader([]byte(dr.Body))); err != nil {
-		return nil, err
+
+	if auth == nil {
+		var req *http.Request
+		if req, err = http.NewRequest(dr.Method, dr.Uri, bytes.NewReader([]byte(dr.Body))); err != nil {
+			return nil, err
+		}
+
+		client := &http.Client{
+			Timeout: 30 * time.Second,
+		}
+		resp, err = client.Do(req)
+
+		if resp.StatusCode == 401 {
+			return dr.executeNewDigest(resp)
+		}
+		return
 	}
 
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-	resp, err = client.Do(req)
-
-	if resp.StatusCode == 401 {
-		return dr.executeDigest(resp)
-	}
-
-	return
+	return dr.executeExistingDigest()
 }
 
-func (dr *DigestRequest) executeDigest(resp *http.Response) (*http.Response, error) {
-	var (
-		err  error
-		wa   *wwwAuthenticate
-		auth *authorization
-		req  *http.Request
-	)
+func (dr *DigestRequest) executeNewDigest(resp *http.Response) (*http.Response, error) {
 
 	waString := resp.Header.Get("WWW-Authenticate")
 	if waString == "" {
 		return nil, fmt.Errorf("Failed to get WWW-Authenticate header, please check your server configuration.")
 	}
+	wa = newWwwAuthenticate(waString)
 
-	if wa, err = newWwwAuthenticate(waString); err != nil {
+	authString := newAuthorization(dr).toString()
+
+	return dr.executeRequest(authString)
+}
+
+func (dr *DigestRequest) executeExistingDigest() (*http.Response, error) {
+	var err error
+
+	if auth, err = auth.refreshAuthorization(dr); err != nil {
 		return nil, err
 	}
 
-	if auth, err = newAuthorization(wa, dr); err != nil {
-		return nil, err
-	}
+	authString := auth.toString()
+	return dr.executeRequest(authString)
+}
 
-	authString := fmt.Sprintf("Digest %s", auth.toString())
+func (dr *DigestRequest) executeRequest(authString string) (*http.Response, error) {
+	var (
+		err error
+		req *http.Request
+	)
+
 	if req, err = http.NewRequest(dr.Method, dr.Uri, bytes.NewReader([]byte(dr.Body))); err != nil {
 		return nil, err
 	}
 
+	fmt.Printf("AUTHSTRING: %s\n\n", authString)
 	req.Header.Add("Authorization", authString)
 
 	client := &http.Client{

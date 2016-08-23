@@ -17,7 +17,7 @@ type wwwAuthenticate struct {
 	Userhash  bool   // quoted
 }
 
-func newWwwAuthenticate(s string) (*wwwAuthenticate, error) {
+func newWwwAuthenticate(s string) *wwwAuthenticate {
 
 	var wa = wwwAuthenticate{}
 
@@ -75,5 +75,5 @@ func newWwwAuthenticate(s string) (*wwwAuthenticate, error) {
 		wa.Userhash = (strings.ToLower(userhashMatch[1]) == "true")
 	}
 
-	return &wa, nil
+	return &wa
 }

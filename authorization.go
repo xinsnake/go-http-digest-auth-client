@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"crypto/md5"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"hash"
 	"io"
+	"net/url"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -26,43 +29,58 @@ type authorization struct {
 	Username_ string // quoted
 }
 
-func newAuthorization(wa *wwwAuthenticate, dr *DigestRequest) (*authorization, error) {
+func newAuthorization(dr *DigestRequest) *authorization {
 
-	auth := authorization{
+	ah := authorization{
 		Algorithm: wa.Algorithm,
 		Cnonce:    "",
-		Nc:        1, // TODO
+		Nc:        0,
 		Nonce:     wa.Nonce,
 		Opaque:    wa.Opaque,
 		Qop:       "",
 		Realm:     wa.Realm,
 		Response:  "",
-		Uri:       dr.Uri,
+		Uri:       "",
 		Userhash:  wa.Userhash,
 		Username:  dr.Username,
 		Username_: "", // TODO
 	}
 
-	auth.Cnonce = auth.hash(fmt.Sprintf("%d:%s:dfjosbn3kjd01", time.Now().UnixNano(), dr.Username))
-
-	if auth.Userhash {
-		auth.Username = auth.hash(fmt.Sprintf("%s:%s", auth.Username, auth.Realm))
+	if ah.Userhash {
+		ah.Username = ah.hash(fmt.Sprintf("%s:%s", ah.Username, ah.Realm))
 	}
 
-	auth.Response = auth.computeResponse(wa, dr)
+	ah.refreshAuthorization(dr)
 
-	return &auth, nil
+	return &ah
 }
 
-func (ah *authorization) computeResponse(wa *wwwAuthenticate, dr *DigestRequest) (s string) {
+func (ah *authorization) refreshAuthorization(dr *DigestRequest) (*authorization, error) {
 
-	kdSecret := ah.hash(ah.computeA1(wa, dr))
-	kdData := fmt.Sprintf("%s:%s:%s:%s:%s", ah.Nonce, ah.Nc, ah.Cnonce, ah.Qop, ah.hash(ah.computeA2(wa, dr)))
+	ah.Nc++
+
+	ah.Cnonce = ah.hash(fmt.Sprintf("%d:%s:my_value", time.Now().UnixNano(), dr.Username))
+
+	url, err := url.Parse(dr.Uri)
+	if err != nil {
+		return nil, err
+	}
+	ah.Uri = url.RequestURI()
+
+	ah.Response = ah.computeResponse(dr)
+
+	return ah, nil
+}
+
+func (ah *authorization) computeResponse(dr *DigestRequest) (s string) {
+
+	kdSecret := ah.hash(ah.computeA1(dr))
+	kdData := fmt.Sprintf("%s:%08x:%s:%s:%s", ah.Nonce, ah.Nc, ah.Cnonce, ah.Qop, ah.hash(ah.computeA2(dr)))
 
 	return ah.hash(fmt.Sprintf("%s:%s", kdSecret, kdData))
 }
 
-func (ah *authorization) computeA1(wa *wwwAuthenticate, dr *DigestRequest) string {
+func (ah *authorization) computeA1(dr *DigestRequest) string {
 
 	if ah.Algorithm == "" || ah.Algorithm == "MD5" || ah.Algorithm == "SHA-256" {
 		return fmt.Sprintf("%s:%s:%s", ah.Username, ah.Realm, dr.Password)
@@ -70,20 +88,20 @@ func (ah *authorization) computeA1(wa *wwwAuthenticate, dr *DigestRequest) strin
 
 	if ah.Algorithm == "MD5-sess" || ah.Algorithm == "SHA-256-sess" {
 		upHash := ah.hash(fmt.Sprintf("%s:%s:%s", ah.Username, ah.Realm, dr.Password))
-		return fmt.Sprintf("%s:%s:%s", upHash, ah.Nc)
+		return fmt.Sprintf("%s:%s:%s", upHash, ah.Nonce, ah.Cnonce)
 	}
 
 	return ""
 }
 
-func (ah *authorization) computeA2(wa *wwwAuthenticate, dr *DigestRequest) string {
+func (ah *authorization) computeA2(dr *DigestRequest) string {
 
 	if matched, _ := regexp.MatchString("auth-int", wa.Qop); matched {
 		ah.Qop = "auth-int"
 		return fmt.Sprintf("%s:%s:%s", dr.Method, ah.Uri, ah.hash(dr.Body))
 	}
 
-	if ah.Qop == "auth" || ah.Qop == "" {
+	if wa.Qop == "auth" || wa.Qop == "" {
 		ah.Qop = "auth"
 		return fmt.Sprintf("%s:%s", dr.Method, ah.Uri)
 	}
@@ -95,14 +113,14 @@ func (ah *authorization) hash(a string) (s string) {
 
 	var h hash.Hash
 
-	if ah.Algorithm == "MD5" || ah.Algorithm == "MD5-sess" {
+	if ah.Algorithm == "" || ah.Algorithm == "MD5" || ah.Algorithm == "MD5-sess" {
 		h = md5.New()
 	} else if ah.Algorithm == "SHA-256" || ah.Algorithm == "SHA-256-sess" {
 		h = sha256.New()
 	}
 
 	io.WriteString(h, a)
-	s = string(h.Sum(nil))
+	s = hex.EncodeToString(h.Sum(nil))
 
 	return
 }
@@ -121,11 +139,15 @@ func (ah *authorization) toString() string {
 	}
 
 	if ah.Nc != 0 {
-		buffer.WriteString(fmt.Sprintf("nc=%08d, ", ah.Nc))
+		buffer.WriteString(fmt.Sprintf("nc=%08x, ", ah.Nc))
 	}
 
 	if ah.Opaque != "" {
 		buffer.WriteString(fmt.Sprintf("opaque=\"%s\", ", ah.Opaque))
+	}
+
+	if ah.Nonce != "" {
+		buffer.WriteString(fmt.Sprintf("nonce=\"%s\", ", ah.Nonce))
 	}
 
 	if ah.Qop != "" {
@@ -134,10 +156,6 @@ func (ah *authorization) toString() string {
 
 	if ah.Realm != "" {
 		buffer.WriteString(fmt.Sprintf("realm=\"%s\", ", ah.Realm))
-	}
-
-	if ah.Response != "" {
-		buffer.WriteString(fmt.Sprintf("response=\"%s\", ", ah.Response))
 	}
 
 	if ah.Response != "" {
@@ -156,5 +174,7 @@ func (ah *authorization) toString() string {
 		buffer.WriteString(fmt.Sprintf("username=\"%s\", ", ah.Username))
 	}
 
-	return buffer.String()
+	s := buffer.String()
+
+	return strings.TrimSuffix(s, ", ")
 }
