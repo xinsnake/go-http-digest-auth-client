@@ -42,18 +42,20 @@ func newAuthorization(dr *DigestRequest) (*authorization, error) {
 		Response:  "",
 		Uri:       "",
 		Userhash:  dr.Wa.Userhash,
-		Username:  dr.Username,
+		Username:  "",
 		Username_: "", // TODO
-	}
-
-	if ah.Userhash {
-		ah.Username = ah.hash(fmt.Sprintf("%s:%s", ah.Username, ah.Realm))
 	}
 
 	return ah.refreshAuthorization(dr)
 }
 
 func (ah *authorization) refreshAuthorization(dr *DigestRequest) (*authorization, error) {
+
+	ah.Username = dr.Username
+
+	if ah.Userhash {
+		ah.Username = ah.hash(fmt.Sprintf("%s:%s", ah.Username, ah.Realm))
+	}
 
 	ah.Nc++
 
