@@ -29,19 +29,19 @@ type authorization struct {
 	Username_ string // quoted
 }
 
-func newAuthorization(dr *DigestRequest) *authorization {
+func newAuthorization(dr *DigestRequest) (*authorization, error) {
 
 	ah := authorization{
-		Algorithm: wa.Algorithm,
+		Algorithm: dr.Wa.Algorithm,
 		Cnonce:    "",
 		Nc:        0,
-		Nonce:     wa.Nonce,
-		Opaque:    wa.Opaque,
+		Nonce:     dr.Wa.Nonce,
+		Opaque:    dr.Wa.Opaque,
 		Qop:       "",
-		Realm:     wa.Realm,
+		Realm:     dr.Wa.Realm,
 		Response:  "",
 		Uri:       "",
-		Userhash:  wa.Userhash,
+		Userhash:  dr.Wa.Userhash,
 		Username:  dr.Username,
 		Username_: "", // TODO
 	}
@@ -50,9 +50,7 @@ func newAuthorization(dr *DigestRequest) *authorization {
 		ah.Username = ah.hash(fmt.Sprintf("%s:%s", ah.Username, ah.Realm))
 	}
 
-	ah.refreshAuthorization(dr)
-
-	return &ah
+	return ah.refreshAuthorization(dr)
 }
 
 func (ah *authorization) refreshAuthorization(dr *DigestRequest) (*authorization, error) {
@@ -96,12 +94,12 @@ func (ah *authorization) computeA1(dr *DigestRequest) string {
 
 func (ah *authorization) computeA2(dr *DigestRequest) string {
 
-	if matched, _ := regexp.MatchString("auth-int", wa.Qop); matched {
+	if matched, _ := regexp.MatchString("auth-int", dr.Wa.Qop); matched {
 		ah.Qop = "auth-int"
 		return fmt.Sprintf("%s:%s:%s", dr.Method, ah.Uri, ah.hash(dr.Body))
 	}
 
-	if wa.Qop == "auth" || wa.Qop == "" {
+	if dr.Wa.Qop == "auth" || dr.Wa.Qop == "" {
 		ah.Qop = "auth"
 		return fmt.Sprintf("%s:%s", dr.Method, ah.Uri)
 	}

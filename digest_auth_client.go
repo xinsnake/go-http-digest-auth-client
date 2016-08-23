@@ -7,35 +7,37 @@ import (
 	"time"
 )
 
-var (
-	auth *authorization
-	wa   *wwwAuthenticate
-)
-
 type DigestRequest struct {
 	Body     string
 	Method   string
 	Password string
 	Uri      string
 	Username string
+	Auth     *authorization
+	Wa       *wwwAuthenticate
 }
 
 func NewRequest(username string, password string, method string, uri string, body string) DigestRequest {
 
 	dr := DigestRequest{}
+	dr.UpdateRequest(username, password, method, uri, body)
+	return dr
+}
+
+func (dr *DigestRequest) UpdateRequest(username string,
+	password string, method string, uri string, body string) *DigestRequest {
 
 	dr.Body = body
 	dr.Method = method
 	dr.Password = password
 	dr.Uri = uri
 	dr.Username = username
-
 	return dr
 }
 
 func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 
-	if auth == nil {
+	if dr.Auth == nil {
 		var req *http.Request
 		if req, err = http.NewRequest(dr.Method, dr.Uri, bytes.NewReader([]byte(dr.Body))); err != nil {
 			return nil, err
@@ -56,26 +58,44 @@ func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 }
 
 func (dr *DigestRequest) executeNewDigest(resp *http.Response) (*http.Response, error) {
+	var (
+		auth *authorization
+		err  error
+		wa   *wwwAuthenticate
+	)
 
 	waString := resp.Header.Get("WWW-Authenticate")
 	if waString == "" {
 		return nil, fmt.Errorf("Failed to get WWW-Authenticate header, please check your server configuration.")
 	}
 	wa = newWwwAuthenticate(waString)
+	dr.Wa = wa
 
-	authString := newAuthorization(dr).toString()
+	if auth, err = newAuthorization(dr); err != nil {
+		return nil, err
+	}
+	authString := auth.toString()
 
-	return dr.executeRequest(authString)
+	if resp, err := dr.executeRequest(authString); err != nil {
+		return nil, err
+	} else {
+		dr.Auth = auth
+		return resp, nil
+	}
 }
 
 func (dr *DigestRequest) executeExistingDigest() (*http.Response, error) {
-	var err error
+	var (
+		auth *authorization
+		err  error
+	)
 
-	if auth, err = auth.refreshAuthorization(dr); err != nil {
+	if auth, err = dr.Auth.refreshAuthorization(dr); err != nil {
 		return nil, err
 	}
+	dr.Auth = auth
 
-	authString := auth.toString()
+	authString := dr.Auth.toString()
 	return dr.executeRequest(authString)
 }
 
@@ -89,7 +109,7 @@ func (dr *DigestRequest) executeRequest(authString string) (*http.Response, erro
 		return nil, err
 	}
 
-	fmt.Printf("AUTHSTRING: %s\n\n", authString)
+	// fmt.Printf("AUTHSTRING: %s\n\n", authString)
 	req.Header.Add("Authorization", authString)
 
 	client := &http.Client{
