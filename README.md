@@ -11,13 +11,13 @@ and by now the basic features should work.
 import dac "github.com/xinsnake/go-http-digest-auth-client"
 
 // create a new digest authentication request
-dr := dac.NewRequest(userId, userId, method, endUri, payload)
+dr := dac.NewRequest(username, password, method, uri, payload)
 response1, err := dr.Execute()
 
 // check error, get response
 
 // reuse the existing digest authentication request so no extra request is needed
-dr.UpdateRequest(userId, userId, "PUT", endUri, string(buf.Bytes()))
+dr.UpdateRequest(username, password, method, uri, payload)
 response2, err := dr.Execute()
 
 // check error, get response
