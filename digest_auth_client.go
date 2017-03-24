@@ -48,6 +48,10 @@ func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 		}
 		resp, err = client.Do(req)
 
+		if err != nil {
+			return nil, err
+		}
+
 		if resp.StatusCode == 401 {
 			return dr.executeNewDigest(resp)
 		}
