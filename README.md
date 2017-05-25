@@ -22,6 +22,26 @@ response2, err := dr.Execute()
 
 // check error, get response
 ```
+
+Or you can use it with `http.Request`
+
+```go
+t := dac.NewTransport(username, password)
+req, err := http.NewRequest(method, uri, payload)
+
+if err != nil {
+    log.Fatalln(err)
+}
+
+resp, err := t.RoundTrip(req)
+if err != nil {
+    log.Fatalln(err)
+}
+
+fmt.Println(resp)
+```
+
+
 # Todos
 
 * Unit testing
