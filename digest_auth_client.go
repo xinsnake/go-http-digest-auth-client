@@ -17,11 +17,22 @@ type DigestRequest struct {
 	Wa       *wwwAuthenticate
 }
 
-func NewRequest(username string, password string, method string, uri string, body string) DigestRequest {
+type DigestTransport struct {
+	Password string
+	Username string
+}
 
+func NewRequest(username string, password string, method string, uri string, body string) DigestRequest {
 	dr := DigestRequest{}
 	dr.UpdateRequest(username, password, method, uri, body)
 	return dr
+}
+
+func NewTransport(username string, password string) DigestTransport {
+	dt := DigestTransport{}
+	dt.Password = password
+	dt.Username = username
+	return dt
 }
 
 func (dr *DigestRequest) UpdateRequest(username string,
@@ -33,6 +44,23 @@ func (dr *DigestRequest) UpdateRequest(username string,
 	dr.Uri = uri
 	dr.Username = username
 	return dr
+}
+
+func (dt *DigestTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	username := dt.Username
+	password := dt.Password
+	method := req.Method
+	uri := req.URL.String()
+
+	var body string
+	if req.Body != nil {
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(req.Body)
+		body = buf.String()
+	}
+
+	dr := NewRequest(username, password, method, uri, body)
+	return dr.Execute()
 }
 
 func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
