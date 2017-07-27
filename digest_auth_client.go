@@ -69,35 +69,33 @@ func (dt *DigestTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 // Execute initialise the request and get a response
 func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 
-	if dr.Auth == nil {
-		var req *http.Request
-		if req, err = http.NewRequest(dr.Method, dr.Uri, bytes.NewReader([]byte(dr.Body))); err != nil {
-			return nil, err
-		}
-
-		client := &http.Client{
-			Timeout: 30 * time.Second,
-		}
-		resp, err = client.Do(req)
-
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode == 401 {
-			return dr.executeNewDigest(resp)
-		}
-		return
+	if dr.Auth != nil {
+		return dr.executeExistingDigest()
 	}
 
-	return dr.executeExistingDigest()
+	var req *http.Request
+	if req, err = http.NewRequest(dr.Method, dr.Uri, bytes.NewReader([]byte(dr.Body))); err != nil {
+		return nil, err
+	}
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	if resp, err = client.Do(req); err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 401 {
+		return dr.executeNewDigest(resp)
+	}
+
+	return resp, nil
 }
 
-func (dr *DigestRequest) executeNewDigest(resp *http.Response) (*http.Response, error) {
+func (dr *DigestRequest) executeNewDigest(resp *http.Response) (resp2 *http.Response, err error) {
 	var (
 		auth     *authorization
-		err      error
 		wa       *wwwAuthenticate
 		waString string
 	)
@@ -111,45 +109,42 @@ func (dr *DigestRequest) executeNewDigest(resp *http.Response) (*http.Response, 
 	if auth, err = newAuthorization(dr); err != nil {
 		return nil, err
 	}
-	authString := auth.toString()
 
-	if resp, err = dr.executeRequest(authString); err != nil {
+	if resp2, err = dr.executeRequest(auth.toString()); err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	dr.Auth = auth
-	return resp, nil
+	return resp2, nil
 }
 
-func (dr *DigestRequest) executeExistingDigest() (*http.Response, error) {
-	var (
-		auth *authorization
-		err  error
-	)
+func (dr *DigestRequest) executeExistingDigest() (resp *http.Response, err error) {
+	var auth *authorization
 
 	if auth, err = dr.Auth.refreshAuthorization(dr); err != nil {
 		return nil, err
 	}
-
 	dr.Auth = auth
-	authString := dr.Auth.toString()
-	return dr.executeRequest(authString)
+
+	return dr.executeRequest(dr.Auth.toString())
 }
 
-func (dr *DigestRequest) executeRequest(authString string) (*http.Response, error) {
-	var (
-		err error
-		req *http.Request
-	)
+func (dr *DigestRequest) executeRequest(authString string) (resp *http.Response, err error) {
+	var req *http.Request
 
 	if req, err = http.NewRequest(dr.Method, dr.Uri, bytes.NewReader([]byte(dr.Body))); err != nil {
 		return nil, err
 	}
 
 	req.Header.Add("Authorization", authString)
+
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
-	return client.Do(req)
+	if resp, err = client.Do(req); err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	return resp, nil
 }
