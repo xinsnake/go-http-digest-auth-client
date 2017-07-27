@@ -22,21 +22,20 @@ type DigestTransport struct {
 	Username string
 }
 
-func NewRequest(username string, password string, method string, uri string, body string) DigestRequest {
+func NewRequest(username, password, method, uri, body string) DigestRequest {
 	dr := DigestRequest{}
 	dr.UpdateRequest(username, password, method, uri, body)
 	return dr
 }
 
-func NewTransport(username string, password string) DigestTransport {
+func NewTransport(username, password string) DigestTransport {
 	dt := DigestTransport{}
 	dt.Password = password
 	dt.Username = username
 	return dt
 }
 
-func (dr *DigestRequest) UpdateRequest(username string,
-	password string, method string, uri string, body string) *DigestRequest {
+func (dr *DigestRequest) UpdateRequest(username, password, method, uri, body string) *DigestRequest {
 
 	dr.Body = body
 	dr.Method = method
@@ -98,7 +97,7 @@ func (dr *DigestRequest) executeNewDigest(resp *http.Response) (*http.Response, 
 
 	waString := resp.Header.Get("WWW-Authenticate")
 	if waString == "" {
-		return nil, fmt.Errorf("Failed to get WWW-Authenticate header, please check your server configuration.")
+		return nil, fmt.Errorf("failed to get WWW-Authenticate header, please check your server configuration")
 	}
 	wa = newWwwAuthenticate(waString)
 	dr.Wa = wa
@@ -108,12 +107,12 @@ func (dr *DigestRequest) executeNewDigest(resp *http.Response) (*http.Response, 
 	}
 	authString := auth.toString()
 
-	if resp, err := dr.executeRequest(authString); err != nil {
+	if _, err := dr.executeRequest(authString); err != nil {
 		return nil, err
-	} else {
-		dr.Auth = auth
-		return resp, nil
 	}
+
+	dr.Auth = auth
+	return resp, nil
 }
 
 func (dr *DigestRequest) executeExistingDigest() (*http.Response, error) {
@@ -141,7 +140,6 @@ func (dr *DigestRequest) executeRequest(authString string) (*http.Response, erro
 		return nil, err
 	}
 
-	// fmt.Printf("AUTHSTRING: %s\n\n", authString)
 	req.Header.Add("Authorization", authString)
 
 	client := &http.Client{
