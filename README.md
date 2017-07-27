@@ -40,10 +40,3 @@ if err != nil {
 
 fmt.Println(resp)
 ```
-
-
-# Todos
-
-* Unit testing
-* Implement encoded username `username*`
-* Logging and debugging message
