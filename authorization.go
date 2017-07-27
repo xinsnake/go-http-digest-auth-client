@@ -65,8 +65,8 @@ func (ah *authorization) refreshAuthorization(dr *DigestRequest) (*authorization
 	if err != nil {
 		return nil, err
 	}
-	ah.Uri = url.RequestURI()
 
+	ah.Uri = url.RequestURI()
 	ah.Response = ah.computeResponse(dr)
 
 	return ah, nil

@@ -78,6 +78,7 @@ func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 		if err != nil {
 			return nil, err
 		}
+		defer resp.Body.Close()
 
 		if resp.StatusCode == 401 {
 			return dr.executeNewDigest(resp)
@@ -90,13 +91,13 @@ func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 
 func (dr *DigestRequest) executeNewDigest(resp *http.Response) (*http.Response, error) {
 	var (
-		auth *authorization
-		err  error
-		wa   *wwwAuthenticate
+		auth     *authorization
+		err      error
+		wa       *wwwAuthenticate
+		waString string
 	)
 
-	waString := resp.Header.Get("WWW-Authenticate")
-	if waString == "" {
+	if waString = resp.Header.Get("WWW-Authenticate"); waString == "" {
 		return nil, fmt.Errorf("failed to get WWW-Authenticate header, please check your server configuration")
 	}
 	wa = newWwwAuthenticate(waString)
@@ -107,9 +108,10 @@ func (dr *DigestRequest) executeNewDigest(resp *http.Response) (*http.Response, 
 	}
 	authString := auth.toString()
 
-	if _, err := dr.executeRequest(authString); err != nil {
+	if resp, err = dr.executeRequest(authString); err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	dr.Auth = auth
 	return resp, nil
@@ -124,8 +126,8 @@ func (dr *DigestRequest) executeExistingDigest() (*http.Response, error) {
 	if auth, err = dr.Auth.refreshAuthorization(dr); err != nil {
 		return nil, err
 	}
-	dr.Auth = auth
 
+	dr.Auth = auth
 	authString := dr.Auth.toString()
 	return dr.executeRequest(authString)
 }
@@ -141,10 +143,8 @@ func (dr *DigestRequest) executeRequest(authString string) (*http.Response, erro
 	}
 
 	req.Header.Add("Authorization", authString)
-
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
-
 	return client.Do(req)
 }
