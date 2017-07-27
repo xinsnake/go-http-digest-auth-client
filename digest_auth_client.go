@@ -22,12 +22,14 @@ type DigestTransport struct {
 	Username string
 }
 
+// NewRequest creates a new DigestRequest object
 func NewRequest(username, password, method, uri, body string) DigestRequest {
 	dr := DigestRequest{}
 	dr.UpdateRequest(username, password, method, uri, body)
 	return dr
 }
 
+// NewTransport creates a new DigestTransport object
 func NewTransport(username, password string) DigestTransport {
 	dt := DigestTransport{}
 	dt.Password = password
@@ -35,8 +37,9 @@ func NewTransport(username, password string) DigestTransport {
 	return dt
 }
 
+// UpdateRequest is called when you want to reuse an existing
+//  DigestRequest connection with new request information
 func (dr *DigestRequest) UpdateRequest(username, password, method, uri, body string) *DigestRequest {
-
 	dr.Body = body
 	dr.Method = method
 	dr.Password = password
@@ -45,6 +48,7 @@ func (dr *DigestRequest) UpdateRequest(username, password, method, uri, body str
 	return dr
 }
 
+// RoundTrip implements the http.RoundTripper interface
 func (dt *DigestTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	username := dt.Username
 	password := dt.Password
@@ -62,6 +66,7 @@ func (dt *DigestTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	return dr.Execute()
 }
 
+// Execute initialise the request and get a response
 func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 
 	if dr.Auth == nil {
