@@ -37,6 +37,7 @@ resp, err := t.RoundTrip(req)
 if err != nil {
     log.Fatalln(err)
 }
+defer resp.Body.Close()
 
 fmt.Println(resp)
 ```

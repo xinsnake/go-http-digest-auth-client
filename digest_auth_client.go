@@ -84,7 +84,6 @@ func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 	if resp, err = client.Do(req); err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode == 401 {
 		return dr.executeNewDigest(resp)
@@ -141,10 +140,6 @@ func (dr *DigestRequest) executeRequest(authString string) (resp *http.Response,
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
-	if resp, err = client.Do(req); err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 
-	return resp, nil
+	return client.Do(req)
 }
