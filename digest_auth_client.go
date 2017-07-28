@@ -89,6 +89,7 @@ func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 		return dr.executeNewDigest(resp)
 	}
 
+	// return the resp to user to handle resp.body.Close()
 	return resp, nil
 }
 
@@ -98,6 +99,9 @@ func (dr *DigestRequest) executeNewDigest(resp *http.Response) (resp2 *http.Resp
 		wa       *wwwAuthenticate
 		waString string
 	)
+
+	// body not required for authentication, closing
+	resp.Body.Close()
 
 	if waString = resp.Header.Get("WWW-Authenticate"); waString == "" {
 		return nil, fmt.Errorf("failed to get WWW-Authenticate header, please check your server configuration")
