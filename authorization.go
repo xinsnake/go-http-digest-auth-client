@@ -23,7 +23,7 @@ type authorization struct {
 	Qop       string // unquoted
 	Realm     string // quoted
 	Response  string // quoted
-	Uri       string // quoted
+	URI       string // quoted
 	Userhash  bool   // quoted
 	Username  string // quoted
 	Username_ string // quoted
@@ -40,7 +40,7 @@ func newAuthorization(dr *DigestRequest) (*authorization, error) {
 		Qop:       "",
 		Realm:     dr.Wa.Realm,
 		Response:  "",
-		Uri:       "",
+		URI:       "",
 		Userhash:  dr.Wa.Userhash,
 		Username:  "",
 		Username_: "", // TODO
@@ -61,12 +61,12 @@ func (ah *authorization) refreshAuthorization(dr *DigestRequest) (*authorization
 
 	ah.Cnonce = ah.hash(fmt.Sprintf("%d:%s:my_value", time.Now().UnixNano(), dr.Username))
 
-	url, err := url.Parse(dr.Uri)
+	url, err := url.Parse(dr.URI)
 	if err != nil {
 		return nil, err
 	}
 
-	ah.Uri = url.RequestURI()
+	ah.URI = url.RequestURI()
 	ah.Response = ah.computeResponse(dr)
 
 	return ah, nil
@@ -98,12 +98,12 @@ func (ah *authorization) computeA2(dr *DigestRequest) string {
 
 	if matched, _ := regexp.MatchString("auth-int", dr.Wa.Qop); matched {
 		ah.Qop = "auth-int"
-		return fmt.Sprintf("%s:%s:%s", dr.Method, ah.Uri, ah.hash(dr.Body))
+		return fmt.Sprintf("%s:%s:%s", dr.Method, ah.URI, ah.hash(dr.Body))
 	}
 
 	if dr.Wa.Qop == "auth" || dr.Wa.Qop == "" {
 		ah.Qop = "auth"
-		return fmt.Sprintf("%s:%s", dr.Method, ah.Uri)
+		return fmt.Sprintf("%s:%s", dr.Method, ah.URI)
 	}
 
 	return ""
@@ -162,8 +162,8 @@ func (ah *authorization) toString() string {
 		buffer.WriteString(fmt.Sprintf("response=\"%s\", ", ah.Response))
 	}
 
-	if ah.Uri != "" {
-		buffer.WriteString(fmt.Sprintf("uri=\"%s\", ", ah.Uri))
+	if ah.URI != "" {
+		buffer.WriteString(fmt.Sprintf("uri=\"%s\", ", ah.URI))
 	}
 
 	if ah.Userhash {
