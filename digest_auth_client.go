@@ -46,6 +46,7 @@ func (dr *DigestRequest) UpdateRequest(username, password, method, uri, body str
 	dr.Password = password
 	dr.URI = uri
 	dr.Username = username
+	dr.Header = make(map[string][]string)
 	return dr
 }
 
