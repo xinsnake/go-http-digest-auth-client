@@ -2,6 +2,7 @@ package digest_auth_client
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"time"
@@ -16,6 +17,7 @@ type DigestRequest struct {
 	Header   http.Header
 	Auth     *authorization
 	Wa       *wwwAuthenticate
+	CertVal  bool
 }
 
 type DigestTransport struct {
@@ -27,6 +29,7 @@ type DigestTransport struct {
 func NewRequest(username, password, method, uri, body string) DigestRequest {
 	dr := DigestRequest{}
 	dr.UpdateRequest(username, password, method, uri, body)
+	dr.CertVal = true
 	return dr
 }
 
@@ -84,6 +87,14 @@ func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
+
+	if !dr.CertVal {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client.Transport = tr
+	}
+
 	if resp, err = client.Do(req); err != nil {
 		return nil, err
 	}
@@ -146,6 +157,13 @@ func (dr *DigestRequest) executeRequest(authString string) (resp *http.Response,
 
 	client := &http.Client{
 		Timeout: 30 * time.Second,
+	}
+
+	if !dr.CertVal {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client.Transport = tr
 	}
 
 	return client.Do(req)
