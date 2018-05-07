@@ -141,9 +141,7 @@ func (dr *DigestRequest) executeRequest(authString string) (resp *http.Response,
 
 	req.Header.Add("Authorization", authString)
 
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
+	client := &http.Client{}
 
 	return client.Do(req)
 }
