@@ -21,7 +21,7 @@ func newWwwAuthenticate(s string) *wwwAuthenticate {
 
 	var wa = wwwAuthenticate{}
 
-	algorithmRegex := regexp.MustCompile(`algorithm=([^ ,]+)`)
+	algorithmRegex := regexp.MustCompile(`algorithm="([^ ,]+)"`)
 	algorithmMatch := algorithmRegex.FindStringSubmatch(s)
 	if algorithmMatch != nil {
 		wa.Algorithm = algorithmMatch[1]
