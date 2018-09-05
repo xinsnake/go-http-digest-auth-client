@@ -51,6 +51,12 @@ func newWwwAuthenticate(s string) *wwwAuthenticate {
 		wa.Qop = qopMatch[1]
 	}
 
+	qopRegexNo := regexp.MustCompile(`qop=([^ ,]+)`)
+	qopRegexNoMatch := qopRegexNo.FindStringSubmatch(s)
+	if qopRegexNoMatch != nil {
+		wa.Qop = qopRegexNoMatch[1]
+	}
+
 	realmRegex := regexp.MustCompile(`realm="(.+?)"`)
 	realmMatch := realmRegex.FindStringSubmatch(s)
 	if realmMatch != nil {

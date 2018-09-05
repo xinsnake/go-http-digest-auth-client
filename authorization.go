@@ -73,9 +73,14 @@ func (ah *authorization) refreshAuthorization(dr *DigestRequest) (*authorization
 }
 
 func (ah *authorization) computeResponse(dr *DigestRequest) (s string) {
+	kdData := ""
 
 	kdSecret := ah.hash(ah.computeA1(dr))
-	kdData := fmt.Sprintf("%s:%08x:%s:%s:%s", ah.Nonce, ah.Nc, ah.Cnonce, ah.Qop, ah.hash(ah.computeA2(dr)))
+	if dr.Wa.Qop == "" {
+		kdData = fmt.Sprintf("%s:%s", ah.Nonce, ah.hash(ah.computeA2(dr)))
+	} else {
+		kdData = fmt.Sprintf("%s:%08x:%s:%s:%s", ah.Nonce, ah.Nc, ah.Cnonce, ah.Qop, ah.hash(ah.computeA2(dr)))
+	}
 
 	return ah.hash(fmt.Sprintf("%s:%s", kdSecret, kdData))
 }
