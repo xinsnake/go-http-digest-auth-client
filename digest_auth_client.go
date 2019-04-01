@@ -18,11 +18,13 @@ type DigestRequest struct {
 	Auth     *authorization
 	Wa       *wwwAuthenticate
 	CertVal  bool
+	Timeout  time.Duration
 }
 
 type DigestTransport struct {
 	Password string
 	Username string
+	Timeout  time.Duration
 }
 
 // NewRequest creates a new DigestRequest object
@@ -30,6 +32,7 @@ func NewRequest(username, password, method, uri, body string) DigestRequest {
 	dr := DigestRequest{}
 	dr.UpdateRequest(username, password, method, uri, body)
 	dr.CertVal = true
+	dr.Timeout = 30 * time.Second
 	return dr
 }
 
@@ -38,6 +41,7 @@ func NewTransport(username, password string) DigestTransport {
 	dt := DigestTransport{}
 	dt.Password = password
 	dt.Username = username
+	dt.Timeout = 30 * time.Second
 	return dt
 }
 
@@ -68,6 +72,7 @@ func (dt *DigestTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	}
 
 	dr := NewRequest(username, password, method, uri, body)
+	dr.Timeout = dt.Timeout
 	return dr.Execute()
 }
 
@@ -85,7 +90,7 @@ func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 	req.Header = dr.Header
 
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: dr.Timeout,
 	}
 
 	if !dr.CertVal {
@@ -156,7 +161,7 @@ func (dr *DigestRequest) executeRequest(authString string) (resp *http.Response,
 	req.Header.Add("Authorization", authString)
 
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: dr.Timeout,
 	}
 
 	if !dr.CertVal {
