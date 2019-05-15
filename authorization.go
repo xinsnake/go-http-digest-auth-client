@@ -130,6 +130,26 @@ func (ah *authorization) toString() string {
 
 	buffer.WriteString("Digest ")
 
+	if ah.Username != "" {
+		buffer.WriteString(fmt.Sprintf("username=\"%s\", ", ah.Username))
+	}
+
+	if ah.Realm != "" {
+		buffer.WriteString(fmt.Sprintf("realm=\"%s\", ", ah.Realm))
+	}
+
+	if ah.Nonce != "" {
+		buffer.WriteString(fmt.Sprintf("nonce=\"%s\", ", ah.Nonce))
+	}
+
+	if ah.URI != "" {
+		buffer.WriteString(fmt.Sprintf("uri=\"%s\", ", ah.URI))
+	}
+
+	if ah.Response != "" {
+		buffer.WriteString(fmt.Sprintf("response=\"%s\", ", ah.Response))
+	}
+
 	if ah.Algorithm != "" {
 		buffer.WriteString(fmt.Sprintf("algorithm=%s, ", ah.Algorithm))
 	}
@@ -138,40 +158,20 @@ func (ah *authorization) toString() string {
 		buffer.WriteString(fmt.Sprintf("cnonce=\"%s\", ", ah.Cnonce))
 	}
 
-	if ah.Nc != 0 {
-		buffer.WriteString(fmt.Sprintf("nc=%08x, ", ah.Nc))
-	}
-
 	if ah.Opaque != "" {
 		buffer.WriteString(fmt.Sprintf("opaque=\"%s\", ", ah.Opaque))
-	}
-
-	if ah.Nonce != "" {
-		buffer.WriteString(fmt.Sprintf("nonce=\"%s\", ", ah.Nonce))
 	}
 
 	if ah.Qop != "" {
 		buffer.WriteString(fmt.Sprintf("qop=%s, ", ah.Qop))
 	}
 
-	if ah.Realm != "" {
-		buffer.WriteString(fmt.Sprintf("realm=\"%s\", ", ah.Realm))
-	}
-
-	if ah.Response != "" {
-		buffer.WriteString(fmt.Sprintf("response=\"%s\", ", ah.Response))
-	}
-
-	if ah.URI != "" {
-		buffer.WriteString(fmt.Sprintf("uri=\"%s\", ", ah.URI))
+	if ah.Nc != 0 {
+		buffer.WriteString(fmt.Sprintf("nc=%08x, ", ah.Nc))
 	}
 
 	if ah.Userhash {
 		buffer.WriteString("userhash=true, ")
-	}
-
-	if ah.Username != "" {
-		buffer.WriteString(fmt.Sprintf("username=\"%s\", ", ah.Username))
 	}
 
 	s := buffer.String()
