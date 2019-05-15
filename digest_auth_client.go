@@ -9,16 +9,16 @@ import (
 )
 
 type DigestRequest struct {
-	Body     string
-	Method   string
-	Password string
-	URI      string
-	Username string
-	Header   http.Header
-	Auth     *authorization
-	Wa       *wwwAuthenticate
-	CertVal  bool
-	Timeout  time.Duration
+	Body       string
+	Method     string
+	Password   string
+	URI        string
+	Username   string
+	Header     http.Header
+	Auth       *authorization
+	Wa         *wwwAuthenticate
+	CertVal    bool
+	HTTPClient *http.Client
 }
 
 type DigestTransport struct {
@@ -43,6 +43,23 @@ func NewTransport(username, password string) DigestTransport {
 	dt.Username = username
 	dt.Timeout = 30 * time.Second
 	return dt
+}
+
+func (dr *DigestRequest) getHTTPClient() *http.Client {
+	if dr.HTTPClient != nil {
+		return dr.HTTPClient
+	}
+	tlsConfig := tls.Config{}
+	if !dr.CertVal {
+		tlsConfig.InsecureSkipVerify = true
+	}
+
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tlsConfig,
+		},
+	}
 }
 
 // UpdateRequest is called when you want to reuse an existing
@@ -89,16 +106,7 @@ func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 	}
 	req.Header = dr.Header
 
-	client := &http.Client{
-		Timeout: dr.Timeout,
-	}
-
-	if !dr.CertVal {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		client.Transport = tr
-	}
+	client := dr.getHTTPClient()
 
 	if resp, err = client.Do(req); err != nil {
 		return nil, err
@@ -160,16 +168,6 @@ func (dr *DigestRequest) executeRequest(authString string) (resp *http.Response,
 	req.Header = dr.Header
 	req.Header.Add("Authorization", authString)
 
-	client := &http.Client{
-		Timeout: dr.Timeout,
-	}
-
-	if !dr.CertVal {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		client.Transport = tr
-	}
-
+	client := dr.getHTTPClient()
 	return client.Do(req)
 }
