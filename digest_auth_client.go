@@ -32,7 +32,6 @@ func NewRequest(username, password, method, uri, body string) DigestRequest {
 	dr := DigestRequest{}
 	dr.UpdateRequest(username, password, method, uri, body)
 	dr.CertVal = true
-	dr.Timeout = 30 * time.Second
 	return dr
 }
 
@@ -89,7 +88,6 @@ func (dt *DigestTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	}
 
 	dr := NewRequest(username, password, method, uri, body)
-	dr.Timeout = dt.Timeout
 	return dr.Execute()
 }
 
