@@ -33,16 +33,16 @@ func TestHash(t *testing.T) {
 			algorithm: "SHA-256",
 			expRes:    "50d858e0985ecc7f60418aaf0cc5ab587f42c2570a884095a9e8ccacd0f6545c",
 		},
-		//{
-		//	name:      "md5 algorithm will panic",
-		//	algorithm: "md5",
-		//	expRes:    "1a79a4d60de6718e8e5b326e338ae533",
-		//},
-		//{
-		//	name:      "unknown algorithm will panic",
-		//	algorithm: "unknown",
-		//	expRes:    "",
-		//},
+		{
+			name:      "md5 algorithm",
+			algorithm: "md5",
+			expRes:    "1a79a4d60de6718e8e5b326e338ae533",
+		},
+		{
+			name:      "unknown algorithm",
+			algorithm: "unknown",
+			expRes:    "",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -90,7 +90,7 @@ func TestComputeA1(t *testing.T) {
 		{
 			name:      "md5 algorithm",
 			algorithm: "md5",
-			expRes:    "",
+			expRes:    "username:realm:secret",
 		},
 		{
 			name:      "unknown algorithm",

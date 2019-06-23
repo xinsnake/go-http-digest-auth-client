@@ -49,6 +49,13 @@ func newAuthorization(dr *DigestRequest) (*authorization, error) {
 	return ah.refreshAuthorization(dr)
 }
 
+const (
+	algorithmMD5        = "MD5"
+	algorithmMD5Sess    = "MD5-SESS"
+	algorithmSHA256     = "SHA-256"
+	algorithmSHA256Sess = "SHA-256-SESS"
+)
+
 func (ah *authorization) refreshAuthorization(dr *DigestRequest) (*authorization, error) {
 
 	ah.Username = dr.Username
@@ -82,11 +89,13 @@ func (ah *authorization) computeResponse(dr *DigestRequest) (s string) {
 
 func (ah *authorization) computeA1(dr *DigestRequest) string {
 
-	if ah.Algorithm == "" || ah.Algorithm == "MD5" || ah.Algorithm == "SHA-256" {
+	algorithm := strings.ToUpper(ah.Algorithm)
+
+	if algorithm == "" || algorithm == algorithmMD5 || algorithm == algorithmSHA256 {
 		return fmt.Sprintf("%s:%s:%s", ah.Username, ah.Realm, dr.Password)
 	}
 
-	if ah.Algorithm == "MD5-sess" || ah.Algorithm == "SHA-256-sess" {
+	if algorithm == algorithmMD5Sess || algorithm == algorithmSHA256Sess {
 		upHash := ah.hash(fmt.Sprintf("%s:%s:%s", ah.Username, ah.Realm, dr.Password))
 		return fmt.Sprintf("%s:%s:%s", upHash, ah.Nonce, ah.Cnonce)
 	}
@@ -109,20 +118,21 @@ func (ah *authorization) computeA2(dr *DigestRequest) string {
 	return ""
 }
 
-func (ah *authorization) hash(a string) (s string) {
-
+func (ah *authorization) hash(a string) string {
 	var h hash.Hash
+	algorithm := strings.ToUpper(ah.Algorithm)
 
-	if ah.Algorithm == "" || ah.Algorithm == "MD5" || ah.Algorithm == "MD5-sess" {
+	if algorithm == "" || algorithm == algorithmMD5 || algorithm == algorithmMD5Sess {
 		h = md5.New()
-	} else if ah.Algorithm == "SHA-256" || ah.Algorithm == "SHA-256-sess" {
+	} else if algorithm == algorithmSHA256 || algorithm == algorithmSHA256Sess {
 		h = sha256.New()
+	} else {
+		// unknown algorithm
+		return ""
 	}
 
 	io.WriteString(h, a)
-	s = hex.EncodeToString(h.Sum(nil))
-
-	return
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func (ah *authorization) toString() string {
