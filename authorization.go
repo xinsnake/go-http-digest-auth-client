@@ -9,7 +9,6 @@ import (
 	"hash"
 	"io"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
 )
@@ -105,7 +104,7 @@ func (ah *authorization) computeA1(dr *DigestRequest) string {
 
 func (ah *authorization) computeA2(dr *DigestRequest) string {
 
-	if matched, _ := regexp.MatchString("auth-int", dr.Wa.Qop); matched {
+	if strings.Contains(dr.Wa.Qop, "auth-int") {
 		ah.Qop = "auth-int"
 		return fmt.Sprintf("%s:%s:%s", dr.Method, ah.URI, ah.hash(dr.Body))
 	}
