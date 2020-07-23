@@ -87,6 +87,7 @@ func (dt *DigestTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	}
 
 	dr := NewRequest(username, password, method, uri, body)
+	copyHeaders(req.Header, dr.Header)
 	if dt.HTTPClient != nil {
 		dr.HTTPClient = dt.HTTPClient
 	}
@@ -171,4 +172,12 @@ func (dr *DigestRequest) executeRequest(authString string) (resp *http.Response,
 
 	client := dr.getHTTPClient()
 	return client.Do(req)
+}
+
+func copyHeaders(src http.Header, dest http.Header) {
+	for key, values := range src {
+		for _, value := range values {
+			dest.Add(key, value)
+		}
+	}
 }
