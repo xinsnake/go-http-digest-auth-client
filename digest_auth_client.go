@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"time"
 )
@@ -48,15 +50,19 @@ func (dr *DigestRequest) getHTTPClient() *http.Client {
 		return dr.HTTPClient
 	}
 	tlsConfig := tls.Config{}
+	timeout := 30 * time.Second
 	if !dr.CertVal {
 		tlsConfig.InsecureSkipVerify = true
+		return &http.Client{
+			Timeout: timeout,
+			Transport: &http.Transport{
+				TLSClientConfig: &tlsConfig,
+			},
+		}
 	}
 
 	return &http.Client{
-		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tlsConfig,
-		},
+		Timeout: timeout,
 	}
 }
 
@@ -128,7 +134,8 @@ func (dr *DigestRequest) executeNewDigest(resp *http.Response) (resp2 *http.Resp
 		waString string
 	)
 
-	// body not required for authentication, closing
+	// body not required for authentication, discarding and closing to reuse connection
+	io.Copy(ioutil.Discard, resp.Body)
 	resp.Body.Close()
 
 	if waString = resp.Header.Get("WWW-Authenticate"); waString == "" {
