@@ -1,10 +1,6 @@
 # go-http-digest-auth-client
 
 
-> **Due to time limit on my side I won't be able to maintain this package. Please consider using
-> some other library like https://github.com/rkl-/digest. Thanks for your support!**
-
-
 Golang Http Digest Authentication Client
 
 This client implements [RFC7616 HTTP Digest Access Authentication](https://www.rfc-editor.org/rfc/rfc7616.txt)
